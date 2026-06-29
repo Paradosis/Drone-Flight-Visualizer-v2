@@ -1,0 +1,9 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:DropdownField label="Drone List" name="PlayerDropdown" style="opacity: 1; right: auto; left: auto; width: 40%; height: 10%; align-items: stretch; -unity-text-align: middle-center; background-color: rgb(220, 220, 220); font-size: 20px; -unity-text-auto-size: none; -unity-text-generator: standard;"/>
+    <ui:Button text="Spawn Drone" name="SpawnButton" style="width: 281px; height: 60px; align-self: auto;"/>
+    <ui:VisualElement name="DroneList" style="flex-grow: 1; width: 15%;"/>
+    <ui:Button text="Play" name="PlayButton" style="width: 15%;"/>
+    <ui:Button text="Pause" name="PauseButton" style="width: 15%;"/>
+    <ui:Button text="Restart&#10;" name="RestartButton" style="width: 15%;"/>
+    <ui:Label text="Time: 0.00s" name="TimerLabel" double-click-selects-word="true" style="right: auto; left: auto; align-self: center; background-color: rgb(220, 220, 220); width: 10%; -unity-text-align: middle-center; height: 5%; font-size: 14px; -unity-text-auto-size: none; -unity-text-generator: standard;"/>
+</ui:UXML>
