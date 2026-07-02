@@ -16,19 +16,18 @@ public class SplineCreator : MonoBehaviour
 
     public Color trackColor { get; private set; } = Color.white;
 
-    [SerializeField] private bool extrudeSpline = true;
+    [SerializeField] private bool extrudeSpline = false;
     [SerializeField] private bool displayNodes = true;
 
     [SerializeField] private bool closedTrack = false;
     private float totalLapTimeDuration = 0f;
 
-    // Unpacks raw position and rotation frames from JSON file
     public void InitializeAndBuild(DroneData droneData)
     {
         splinePoints.Clear();
         splineRotations.Clear();
 
-        totalLapTimeDuration = (float)droneData.Data[0].LapTime / 200f;
+        totalLapTimeDuration = droneData.Data[0].LapTime / 200f;
 
         trackColor = Random.ColorHSV(0f, 1f, 0.8f, 1f, 0.8f, 1f);
 
@@ -41,12 +40,11 @@ public class SplineCreator : MonoBehaviour
             }
         }
         
-        // checks to see if drone has data at time 0
         if (droneData.Data[0].Data[0].TimeFrame != 0f && splinePoints.Count >= 2)
         {
             Debug.Log("Drone is missing data at time 0"); // this is not a bad thing
             // adds a generated starting point at time 0 since the data starts at 1 second
-            // this is done by mirroring the second data point over the first
+            // this is done by mirroring the second data point over the first to approximate the time 0 starting point
             Vector3 firstPos = splinePoints[0];
             Vector3 secondPos = splinePoints[1];
             
@@ -56,11 +54,10 @@ public class SplineCreator : MonoBehaviour
             Quaternion firstRot = splineRotations[0];
             Quaternion secondRot = splineRotations[1];
             
-            // For rotations, invert the relative rotation difference and apply it backwards
+            // for rotations, invert the relative rotation difference and apply it backwards
             Quaternion relativeRotation = Quaternion.Inverse(firstRot) * secondRot;
             Quaternion mirroredStartRot = firstRot * Quaternion.Inverse(relativeRotation);
 
-            // Insert new points at beginning of lists to create a "time 0" point
             splinePoints.Insert(0, mirroredStartPos);
             splineRotations.Insert(0, mirroredStartRot);
         }
@@ -70,7 +67,6 @@ public class SplineCreator : MonoBehaviour
         CreateDrone();
     }
 
-    // Constructs the spline path
     private void CreateSpline()
     {
         GameObject splineObj = new GameObject("ProceduralSpline");
@@ -79,7 +75,6 @@ public class SplineCreator : MonoBehaviour
         splineContainer = splineObj.AddComponent<SplineContainer>();
         Spline spline = splineContainer.Spline;
 
-        // spline.Closed determines if the first and last nodes should be joined together to make a full loop
         spline.Closed = closedTrack;
 
         foreach (Vector3 pos in splinePoints)
@@ -87,8 +82,8 @@ public class SplineCreator : MonoBehaviour
             spline.Add(new BezierKnot(pos), TangentMode.AutoSmooth);
         }
 
-        // creates a sphere at each node to help visualize the control points of the spline
-        if(displayNodes){
+        if(displayNodes)
+        {
             for (int i = 0; i < spline.Count; i++)
             {
                 GameObject nodeVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -103,7 +98,7 @@ public class SplineCreator : MonoBehaviour
             }
         }
         
-        // creates a gray outline of the entire spline
+
         if (extrudeSpline)
         {
             SplineExtrude extruder = splineObj.AddComponent<SplineExtrude>();
@@ -122,7 +117,6 @@ public class SplineCreator : MonoBehaviour
         }
     }
 
-    // Configures the visual mesh cube and handles continuous trail settings
     private void CreateDrone()
     {
         followerDrone = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -139,11 +133,9 @@ public class SplineCreator : MonoBehaviour
             };
         }
 
-        // positioning the drone before rendering the trail to prevent artifact of trail showing the drone teleporting to starting positon
         if (splineContainer != null && splinePoints.Count > 0)
         {
-            Vector3 localPos = splineContainer.EvaluatePosition(0f);
-            followerDrone.transform.position = splineContainer.transform.TransformPoint(localPos);
+            followerDrone.transform.position = GetWorldPositionAtNormalizedTime(0f);
             if (splineRotations.Count > 0) followerDrone.transform.rotation = splineRotations[0];
         }
 
@@ -156,7 +148,6 @@ public class SplineCreator : MonoBehaviour
         
         Gradient gradient = new Gradient();
         
-        // sets the trail to have constant width
         gradient.SetKeys(
             new GradientColorKey[] { new GradientColorKey(trackColor, 0.0f), new GradientColorKey(trackColor, 1.0f) },
             new GradientAlphaKey[] { new GradientAlphaKey(1.0f, 0.0f), new GradientAlphaKey(1.0f, 1.0f) }
@@ -168,17 +159,14 @@ public class SplineCreator : MonoBehaviour
 
     void Update()
     {
-        // checks to ensure the drone and spline both are instantiated
         if (followerDrone != null && splineContainer != null && splinePoints.Count > 0)
         {
-            EvaluatePositionAtTime(DroneMenuManager.GlobalTime);
+            EvaluatePositionAtTime(StateManager.GlobalTime);
         }
     }
 
-    // Samples and updates the position and rotation targets along the spline based on the provided time
     private void EvaluatePositionAtTime(float globalTime)
     {
-        // Wipe trails immediately if global timer reset occurred
         if (globalTime == 0f && droneTrail != null)
         {
             droneTrail.Clear();
@@ -189,18 +177,15 @@ public class SplineCreator : MonoBehaviour
         // if track is open, there is one less segment than there is nodes
         int totalSegments = splineContainer.Spline.Closed ? knotCount : knotCount - 1;
         
-        // assumes each segment is 1 second long, which it is given the current json data
-        float totalTrackDuration = totalSegments * 1.0f;
+        float totalTrackDuration = totalSegments * 1.0f;// assumes the data is given in 1 second uniform intervals
     
         float loopTime = globalTime % totalTrackDuration;
         
-        // stop movement if track is not closed/looping
-        if (globalTime > totalTrackDuration && !splineContainer.Spline.Closed)
+        if (globalTime >= totalTrackDuration && !splineContainer.Spline.Closed)
         {
             return;
         }
 
-        // Calculate segment steps (assuming each node connection takes exactly 1.0 seconds)
         int currentSegmentIndex = Mathf.FloorToInt(loopTime / 1.0f);
 
         // the t-value of the current segment of the spline, where t=0 is exactly node 1 and t=1 is node 2
@@ -212,10 +197,7 @@ public class SplineCreator : MonoBehaviour
         float endNormalized = (float)(currentSegmentIndex + 1) / totalSegments;
         float globalNormalizedTime = Mathf.Lerp(startNormalized, endNormalized, segmentProgress);
 
-        // built in method in splines package to determine position of spline given t-value which is calculated above
-        Vector3 localPos = splineContainer.EvaluatePosition(globalNormalizedTime);
-        followerDrone.transform.position = splineContainer.transform.TransformPoint(localPos);
-
+        followerDrone.transform.position = GetWorldPositionAtNormalizedTime(globalNormalizedTime);
 
         Quaternion startRotation = splineRotations[currentSegmentIndex];
         Quaternion endRotation = (splineContainer.Spline.Closed && currentSegmentIndex == totalSegments - 1) 
@@ -228,65 +210,57 @@ public class SplineCreator : MonoBehaviour
         DrawVelocity(globalNormalizedTime);
     }
 
+    private void DrawDebugArrow(Vector3 start, Vector3 direction, Color color, float headSize = 0.3f)
+    {
+        Debug.DrawRay(start, direction, color);
+        
+        Vector3 tip = start + direction;
+        Vector3 backwardDir = -direction.normalized;
+        
+        // determine a reliable side axis depending on vertical alignment
+        Vector3 crossHint = Mathf.Abs(Vector3.Dot(backwardDir, Vector3.up)) > 0.99f ? Vector3.forward : Vector3.up;
+        Vector3 rightDir = Vector3.Cross(backwardDir, crossHint).normalized;
+
+        Vector3 rightHead = (backwardDir + rightDir).normalized * headSize;
+        Vector3 leftHead = (backwardDir - rightDir).normalized * headSize;
+
+        Debug.DrawRay(tip, rightHead, color);
+        Debug.DrawRay(tip, leftHead, color);
+    }
+
     private void DrawHeading()
     {
-        // calculate the starting point of the arrow (the center of the drone)
         Vector3 arrowStart = followerDrone.transform.position;
 
-        // define the direction out of the negative Y axis
-        // looking at raw data that seems to be the main heading direction
+        // define the direction of heading out of the local negative Y axis
+        // looking at raw data that seems to be where heading is pointed
         float arrowLength = 2.0f;
         Vector3 arrowDirection = -followerDrone.transform.up * arrowLength;
 
-        Debug.DrawRay(arrowStart, arrowDirection, Color.cyan);
-
-        // drawing arrow head
-        // create two tiny lines splitting off the tip of the arrow bending back toward the drone
-        Vector3 arrowTip = arrowStart + arrowDirection;
-
-        // because the forward heading is along negative Y, transform.up will have the arrow tip pointing backwards
-        Vector3 rightSideHead = (followerDrone.transform.forward + followerDrone.transform.up) * 0.3f;
-        Vector3 leftSideHead = (-followerDrone.transform.forward + followerDrone.transform.up) * 0.3f;
-
-        Debug.DrawRay(arrowTip, rightSideHead, Color.cyan);
-        Debug.DrawRay(arrowTip, leftSideHead, Color.cyan);
+        DrawDebugArrow(arrowStart, arrowDirection, Color.cyan);
     }
     
     public void DrawVelocity(float t)
     {
         float lengthMult = 5.0f;
         Vector3 localPos = splineContainer.EvaluatePosition(t);
-        // rudimentary derivative
+
+        // heuristic derivative
         Vector3 updPos = splineContainer.EvaluatePosition(t + 0.001f);
         Vector3 velocity = (updPos - localPos) * lengthMult;
 
-        // calculate the starting point of the arrow (the center of the drone)
         Vector3 arrowStart = followerDrone.transform.position;
+        Vector3 arrowDirection = velocity.normalized;
 
-        Debug.DrawRay(arrowStart, velocity, Color.red);
-
-        Vector3 arrowTip = arrowStart + velocity;
-
-        // get the direction the velocity is pointing and invert it (pointing back towards start)
-        Vector3 backwardDirection = -velocity.normalized;
-
-        // find a "right" vector perpendicular to our velocity direction
-        // use Vector3.up as a temporary hint to find a reliable cross-product
-        // this is done to prevent a possible error if the world up or forward direction is perfectly in line with the velocity
-        Vector3 crossHint = Mathf.Abs(Vector3.Dot(backwardDirection, Vector3.up)) > 0.99f ? Vector3.forward : Vector3.up;
-        Vector3 rightDirection = Vector3.Cross(backwardDirection, crossHint).normalized;
-
-        // scale the fins based on the length of the velocity vector
-        // using a fraction (like 15%) of the total velocity length keeps it proportional
-        float arrowHeadLength = velocity.magnitude * 0.15f; 
-
-        // combine backward and outward directions, then scale
-        // angling them 45 degrees back (equal parts backward and right/left)
-        Vector3 rightSideHead = (backwardDirection + rightDirection).normalized * arrowHeadLength;
-        Vector3 leftSideHead = (backwardDirection - rightDirection).normalized * arrowHeadLength;
-
-        Debug.DrawRay(arrowTip, rightSideHead, Color.red);
-        Debug.DrawRay(arrowTip, leftSideHead, Color.red);
+        DrawDebugArrow(arrowStart, arrowDirection, Color.red);
     }
     public float GetTotalDuration(){return totalLapTimeDuration;}
+
+    private Vector3 GetWorldPositionAtNormalizedTime(float t)
+    {
+        if (splineContainer == null) return Vector3.zero;
+
+        Vector3 localPos = splineContainer.EvaluatePosition(t);
+        return splineContainer.transform.TransformPoint(localPos);
+    }
 }
