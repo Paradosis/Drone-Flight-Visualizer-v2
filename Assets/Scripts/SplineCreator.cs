@@ -27,20 +27,20 @@ public class SplineCreator : MonoBehaviour
         splinePoints.Clear();
         splineRotations.Clear();
 
-        totalLapTimeDuration = droneData.Data[0].LapTime / 200f;
+        totalLapTimeDuration = droneData.Laps[0].LapTime;
 
         trackColor = Random.ColorHSV(0f, 1f, 0.8f, 1f, 0.8f, 1f);
 
-        foreach (LapData currentLap in droneData.Data)
+        foreach (LapRuntimeData currentLap in droneData.Laps)
         {
-            foreach (TelemetryFrame currentFrame in currentLap.Data)
+            foreach (TelemetryRuntimeFrame currentFrame in currentLap.Telemetry)
             {
-                splinePoints.Add(currentFrame.DronePosition.ToVector3());
-                splineRotations.Add(currentFrame.DroneRotation.ToQuaternion());
+                splinePoints.Add(currentFrame.DronePosition);
+                splineRotations.Add(currentFrame.DroneRotation);
             }
         }
         
-        if (droneData.Data[0].Data[0].TimeFrame != 0f && splinePoints.Count >= 2)
+        if (droneData.Laps[0].Telemetry[0].TimeFrame != 0f && splinePoints.Count >= 2)
         {
             Debug.Log("Drone is missing data at time 0"); // this is not a bad thing
             // adds a generated starting point at time 0 since the data starts at 1 second
@@ -254,6 +254,7 @@ public class SplineCreator : MonoBehaviour
 
         DrawDebugArrow(arrowStart, arrowDirection, Color.red);
     }
+    
     public float GetTotalDuration(){return totalLapTimeDuration;}
 
     private Vector3 GetWorldPositionAtNormalizedTime(float t)

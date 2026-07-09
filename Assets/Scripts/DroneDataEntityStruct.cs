@@ -1,23 +1,24 @@
 using System;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [Serializable]
 public class DroneDataCollection
 {
-    public List<DroneData> droneList;
+    public List<DroneDataEntity> droneList;
 }
 
 [Serializable]
-public class DroneData
+public class DroneDataEntity
 {
-    public PlayerInfo Player;
+    public PlayerInfoEntity Player;
     public string QuadKey;
-    public List<LapData> Data;
+    public List<LapDataEntity> Data;
 }
 
 [Serializable]
-public class PlayerInfo
+public class PlayerInfoEntity
 {
     public string Track;
     public string PlayerId;
@@ -25,23 +26,23 @@ public class PlayerInfo
 }
 
 [Serializable]
-public class LapData
+public class LapDataEntity
 {
     public int LapTime;
     public string DateOfCreation;
-    public List<TelemetryFrame> Data;
+    public List<TelemetryFrameEntity> Data;
 }
 
 [Serializable]
-public class TelemetryFrame
+public struct TelemetryFrameEntity
 {
     public float TimeFrame;
-    public Vector3Data DronePosition;
-    public Vector4Data DroneRotation;
+    public Vector3DataEntity DronePosition;
+    public QuaternionEntityData DroneRotation;
 }
 
 [Serializable]
-public struct Vector3Data
+public struct Vector3DataEntity
 {
     public float X;
     public float Y;
@@ -54,7 +55,7 @@ public struct Vector3Data
 }
 
 [Serializable]
-public struct Vector4Data
+public struct QuaternionEntityData
 {
     public float X;
     public float Y;
@@ -68,6 +69,7 @@ public struct Vector4Data
         // return new Quaternion(X, Y, Z, W);
         Quaternion rawQuat = new Quaternion(X, Y, Z, W);
 
+        
         // reflection matrix that flips the vertical Y-axis
         Matrix4x4 reflectionMatrix = Matrix4x4.identity;
         reflectionMatrix.m11 = -1f; // Invert the Y basis vector (vertical axis)
@@ -77,10 +79,5 @@ public struct Vector4Data
         Matrix4x4 reflectedMatrix = reflectionMatrix * rotationMatrix * reflectionMatrix;
 
         return reflectedMatrix.rotation;
-    }
-
-    public Vector3 ToEulerAngles() 
-    {
-        return ToQuaternion().eulerAngles;
     }
 }

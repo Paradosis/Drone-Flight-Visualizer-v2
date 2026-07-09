@@ -514,11 +514,12 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1802270010}
-  - component: {fileID: 1802270009}
   - component: {fileID: 1802270008}
   - component: {fileID: 1802270007}
+  - component: {fileID: 1802270012}
+  - component: {fileID: 1802270011}
   m_Layer: 0
-  m_Name: MenuManager
+  m_Name: SceneManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -549,24 +550,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::JsonManager
   jsonFile: {fileID: 4900000, guid: 847881fd6061c954db24824422bf1fc0, type: 3}
---- !u!114 &1802270009
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1802270006}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7107c7e0f4e035a4abb884ec279a538a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UIManager
-  jsonManager: {fileID: 1802270008}
-  stateManager: {fileID: 1802270007}
-  mainCamera: {fileID: 915959214}
-  cameraPadding: 1.2
-  droneSplinePrefab: {fileID: 5481032801145137877, guid: ace36797bdf29d343b75cec3d9b32a1e, type: 3}
-  uiDocument: {fileID: 1428427053}
 --- !u!4 &1802270010
 Transform:
   m_ObjectHideFlags: 0
@@ -582,6 +565,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1802270011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1802270006}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c32a739973cbe21439b183d90ab4dfd5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIController
+  uiDocument: {fileID: 1428427053}
+--- !u!114 &1802270012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1802270006}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7107c7e0f4e035a4abb884ec279a538a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UIManager
+  uiController: {fileID: 1802270011}
+  jsonManager: {fileID: 1802270008}
+  stateManager: {fileID: 1802270007}
+  mainCamera: {fileID: 915959214}
+  cameraPadding: 1.2
+  droneSplinePrefab: {fileID: 5481032801145137877, guid: ace36797bdf29d343b75cec3d9b32a1e, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

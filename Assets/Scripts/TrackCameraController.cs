@@ -21,7 +21,6 @@ public class TrackCameraController : MonoBehaviour
 
     private bool isInitialized = false;
 
-    // sets up the cameras default position
     public void InitializeTarget(SplineContainer splineContainer, float paddingMultiplier)
     {
 
@@ -59,10 +58,8 @@ public class TrackCameraController : MonoBehaviour
         {
             if (Mouse.current.rightButton.isPressed)
             {
-                // read the movement of the mouse from last frame
                 Vector2 mouseDelta = Mouse.current.delta.ReadValue();
 
-                // update the yaw and pitch
                 currentX += mouseDelta.x * rotationSpeed;
                 currentY -= mouseDelta.y * rotationSpeed;
 
@@ -91,8 +88,6 @@ public class TrackCameraController : MonoBehaviour
         if (shouldUpdatePosition){UpdatePosition();}
     }
 
-    // moves the camera to be the given rotation and direction away from the targeted center
-    // then sets the camera to look at the targeted center
     private void UpdatePosition()
     {
         // spherical coordinates conversion
@@ -101,7 +96,6 @@ public class TrackCameraController : MonoBehaviour
         
         transform.position = targetCenterPosition + (rotation * direction);
 
-        // unitys built in method to make camera look at given point
         transform.LookAt(targetCenterPosition);
     }
 }

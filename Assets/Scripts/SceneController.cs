@@ -3,9 +3,10 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.Splines;
 
-public class UIManager : MonoBehaviour
+public class SceneController : MonoBehaviour
 {
-    [Header("Managers")]
+    [Header("Controllers & Managers")]
+    public UIController uiController;
     public JsonManager jsonManager;
     public StateManager stateManager;
 
@@ -16,77 +17,46 @@ public class UIManager : MonoBehaviour
     [Header("Prefabs")]
     public GameObject droneSplinePrefab;
 
-    [Header("UI Toolkit References")]
-    public UIDocument uiDocument;
-    
-    private DropdownField playerDropdown;
-    private Button spawnButton;
-    private Button playButton;
-    private Button pauseButton;
-    private Button restartButton;
-    private VisualElement droneListContainer; 
-    private Label timerLabel;
-
     private Dictionary<int, GameObject> activeSplines = new Dictionary<int, GameObject>();
+
+    void Awake()
+    {
+        if (jsonManager == null || stateManager == null || uiController == null)
+        {
+            Debug.LogError("Missing component references on UIManager!");
+            return;
+        }
+    }
 
     void Start()
     {
-        if (jsonManager == null || stateManager == null)
-        {
-            Debug.LogError("Missing Manager references on UIManager!");
-            return;
-        }
+        uiController.OnPlayPressed += HandlePlay;
+        uiController.OnPausePressed += HandlePause;
+        uiController.OnRestartPressed += HandleRestart;
+        uiController.OnSpawnPressed += HandleSpawnDrone;
+        uiController.OnRemoveDronePressed += HandleRemoveDrone;
 
-        SetupUI();
+        InitializeUIData();
     }
 
     void Update()
     {
-        if (timerLabel != null)
-        {
-            timerLabel.text = $"Time: {StateManager.GlobalTime.ToString("F2")}s";
-        }
+        uiController.UpdateTimerText(StateManager.GlobalTime);
     }
 
-    void SetupUI()
-    {
-        if (uiDocument == null) return;
-        
-        var root = uiDocument.rootVisualElement;
-
-        playerDropdown = root.Q<DropdownField>("PlayerDropdown");
-        spawnButton = root.Q<Button>("SpawnButton");
-        playButton = root.Q<Button>("PlayButton");
-        pauseButton = root.Q<Button>("PauseButton");
-        restartButton = root.Q<Button>("RestartButton");
-        droneListContainer = root.Q<VisualElement>("DroneList");
-        timerLabel = root.Q<Label>("TimerLabel");
-
-        PopulateDropdown();
-
-        spawnButton.clicked += OnSpawnDroneClicked;
-        playButton.clicked += OnPlayClicked;
-        pauseButton.clicked += OnPauseClicked;
-        restartButton.clicked += OnRestartClicked;
-    }
-
-    private void PopulateDropdown()
+    private void InitializeUIData()
     {
         List<string> choices = new List<string>();
-        int index = 1; // starting index at 1 for player numbers, eg P1, P2, P3, etc.
-        
+        int index = 1;
         foreach (var drone in jsonManager.FullDroneList)
         {
-            choices.Add($"P{index}: {drone.Player.PlayerId}");
+            choices.Add($"P{index}: {drone.Player.PlayerID}");
             index++;
         }
-        playerDropdown.choices = choices;
-
-        if (choices.Count > 0)
-            playerDropdown.index = 0;
+        uiController.PopulateDropdown(choices);
     }
 
-    private void OnPlayClicked()
+    private void HandlePlay()
     {
         if (activeSplines.Count > 0)
         {
@@ -98,17 +68,17 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    private void OnPauseClicked()
+    private void HandlePause()
     {
         stateManager.PausePlayback();
     }
 
-    private void OnRestartClicked()
+    private void HandleRestart()
     {
         stateManager.ResetPlayback();
     }
 
-    private void OnSpawnDroneClicked()
+    private void HandleSpawnDrone(int selectedIndex)
     {
         if (StateManager.GlobalTime > 0f || StateManager.IsPlaying)
         {
@@ -116,14 +86,12 @@ public class UIManager : MonoBehaviour
             return;
         }
 
-        int selectedIndex = playerDropdown.index;
         var droneList = jsonManager.FullDroneList;
-
         if (selectedIndex < 0 || selectedIndex >= droneList.Count) return;
 
         if (activeSplines.ContainsKey(selectedIndex))
         {
-            Debug.LogWarning($"Drone for player {droneList[selectedIndex].Player.PlayerId} is already active");
+            Debug.LogWarning($"Drone for player {droneList[selectedIndex].Player.PlayerID} is already active");
             return;
         }
 
@@ -147,8 +115,8 @@ public class UIManager : MonoBehaviour
         }
 
         GameObject newSplineInstance = Instantiate(droneSplinePrefab, Vector3.zero, Quaternion.identity);
-        string playerId = droneList[selectedIndex].Player.PlayerId;
-        float laptime = droneList[selectedIndex].Data[0].LapTime / 200f;
+        string playerId = droneList[selectedIndex].Player.PlayerID;
+        float laptime = droneList[selectedIndex].Laps[0].LapTime;
         newSplineInstance.name = $"Spline_{playerId}";
 
         SplineCreator creator = newSplineInstance.GetComponent<SplineCreator>();
@@ -158,7 +126,7 @@ public class UIManager : MonoBehaviour
             creator.InitializeAndBuild(droneList[selectedIndex]);
             activeSplines.Add(selectedIndex, newSplineInstance);
             
-            CreateDroneUIEntry(selectedIndex, playerId, laptime, creator.trackColor);
+            uiController.CreateDroneUIEntry(selectedIndex, playerId, laptime, creator.trackColor);
 
             if (activeSplines.Count == 1)
             {
@@ -170,34 +138,22 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    void CreateDroneUIEntry(int index, string playerId, float laptime, Color textColor)
+    private void HandleRemoveDrone(int index, VisualElement uiRow)
     {
-        if (droneListContainer == null) return;
+        if (StateManager.IsPlaying || StateManager.GlobalTime != 0f)
+        {
+            Debug.LogWarning("Cannot remove drones until simulation is restarted");
+            return;
+        }
 
-        VisualElement row = new VisualElement();
-        row.style.flexDirection = FlexDirection.Row;
-        row.style.justifyContent = Justify.SpaceBetween;
-        row.style.alignItems = Align.Center;
-        row.style.marginBottom = 4;
+        if (activeSplines.ContainsKey(index))
+        {
+            Destroy(activeSplines[index]);
+            activeSplines.Remove(index);
+        }
 
-        Label label = new Label();
-        label.style.color = new StyleColor(textColor);
-        label.text = $"Player {index + 1}: {playerId}\nLap time: {laptime}";
-
-        Button removeButton = new Button {text = "X"};
-        removeButton.clicked += () => {
-            if (activeSplines.ContainsKey(index))
-            {
-                Destroy(activeSplines[index]);
-                activeSplines.Remove(index);
-            }
-            droneListContainer.Remove(row);
-            stateManager.RecalculateMaxDuration(activeSplines);
-        };
-
-        row.Add(label);
-        row.Add(removeButton);
-        droneListContainer.Add(row);
+        uiController.RemoveDroneUIEntry(uiRow);
+        stateManager.RecalculateMaxDuration(activeSplines);
     }
 
     void FocusCameraOnSpline(GameObject splineRoot)
@@ -230,9 +186,13 @@ public class UIManager : MonoBehaviour
 
     void OnDestroy()
     {
-        if (spawnButton != null)   spawnButton.clicked -= OnSpawnDroneClicked;
-        if (playButton != null)    playButton.clicked -= OnPlayClicked;
-        if (pauseButton != null)   pauseButton.clicked -= OnPauseClicked;
-        if (restartButton != null) restartButton.clicked -= OnRestartClicked;
+        if (uiController != null)
+        {
+            uiController.OnPlayPressed -= HandlePlay;
+            uiController.OnPausePressed -= HandlePause;
+            uiController.OnRestartPressed -= HandleRestart;
+            uiController.OnSpawnPressed -= HandleSpawnDrone;
+            uiController.OnRemoveDronePressed -= HandleRemoveDrone;
+        }
     }
 }
