@@ -7,7 +7,7 @@ public class SceneController : MonoBehaviour
 {
     [Header("Controllers & Managers")]
     public UIController uiController;
-    public JsonManager jsonManager;
+    public DataService dataService;
     public StateManager stateManager;
 
     [Header("Camera Configuration")]
@@ -21,7 +21,7 @@ public class SceneController : MonoBehaviour
 
     void Awake()
     {
-        if (jsonManager == null || stateManager == null || uiController == null)
+        if (dataService == null || stateManager == null || uiController == null)
         {
             Debug.LogError("Missing component references on UIManager!");
             return;
@@ -30,11 +30,7 @@ public class SceneController : MonoBehaviour
 
     void Start()
     {
-        uiController.OnPlayPressed += HandlePlay;
-        uiController.OnPausePressed += HandlePause;
-        uiController.OnRestartPressed += HandleRestart;
-        uiController.OnSpawnPressed += HandleSpawnDrone;
-        uiController.OnRemoveDronePressed += HandleRemoveDrone;
+        uiController.Initialize(HandlePlay, HandlePause, HandleRestart, HandleSpawnDrone, HandleRemoveDrone);
 
         InitializeUIData();
     }
@@ -48,7 +44,7 @@ public class SceneController : MonoBehaviour
     {
         List<string> choices = new List<string>();
         int index = 1;
-        foreach (var drone in jsonManager.FullDroneList)
+        foreach (var drone in dataService.FullDroneList)
         {
             choices.Add($"P{index}: {drone.Player.PlayerID}");
             index++;
@@ -86,7 +82,7 @@ public class SceneController : MonoBehaviour
             return;
         }
 
-        var droneList = jsonManager.FullDroneList;
+        var droneList = dataService.FullDroneList;
         if (selectedIndex < 0 || selectedIndex >= droneList.Count) return;
 
         if (activeSplines.ContainsKey(selectedIndex))
@@ -181,18 +177,6 @@ public class SceneController : MonoBehaviour
             mainCamera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             
             Debug.LogWarning("TrackCameraController component not found on Main Camera. Defaulting to static top-down view.");
-        }
-    }
-
-    void OnDestroy()
-    {
-        if (uiController != null)
-        {
-            uiController.OnPlayPressed -= HandlePlay;
-            uiController.OnPausePressed -= HandlePause;
-            uiController.OnRestartPressed -= HandleRestart;
-            uiController.OnSpawnPressed -= HandleSpawnDrone;
-            uiController.OnRemoveDronePressed -= HandleRemoveDrone;
         }
     }
 }

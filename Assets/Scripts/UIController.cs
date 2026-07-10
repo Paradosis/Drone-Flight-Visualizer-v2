@@ -16,16 +16,30 @@ public class UIController : MonoBehaviour
     private VisualElement droneListContainer; 
     private Label timerLabel;
 
-
-    public event Action OnPlayPressed;
-    public event Action OnPausePressed;
-    public event Action OnRestartPressed;
-    public event Action<int> OnSpawnPressed; // passes the selected dropdown index
-    public event Action<int, VisualElement> OnRemoveDronePressed; // passes index and UI element to destroy
+    private Action _onPlayPressed;
+    private Action _onPausePressed;
+    private Action _onRestartPressed;
+    private Action<int> _onSpawnPressed; 
+    private Action<int, VisualElement> _onRemoveDronePressed;
 
     void Awake()
     {
         SetupUI();
+    }
+
+
+    public void Initialize(
+        Action onPlay, 
+        Action onPause, 
+        Action onRestart, 
+        Action<int> onSpawn, 
+        Action<int, VisualElement> onRemove)
+    {
+        _onPlayPressed = onPlay;
+        _onPausePressed = onPause;
+        _onRestartPressed = onRestart;
+        _onSpawnPressed = onSpawn;
+        _onRemoveDronePressed = onRemove;
     }
 
     private void SetupUI()
@@ -42,10 +56,10 @@ public class UIController : MonoBehaviour
         droneListContainer = root.Q<VisualElement>("DroneList");
         timerLabel = root.Q<Label>("TimerLabel");
 
-        playButton.clicked += () => OnPlayPressed?.Invoke();
-        pauseButton.clicked += () => OnPausePressed?.Invoke();
-        restartButton.clicked += () => OnRestartPressed?.Invoke();
-        spawnButton.clicked += () => OnSpawnPressed?.Invoke(playerDropdown.index);
+        playButton.clicked += () => _onPlayPressed?.Invoke();
+        pauseButton.clicked += () => _onPausePressed?.Invoke();
+        restartButton.clicked += () => _onRestartPressed?.Invoke();
+        spawnButton.clicked += () => _onSpawnPressed?.Invoke(playerDropdown.index);
     }
 
     public void PopulateDropdown(List<string> choices)
@@ -80,8 +94,7 @@ public class UIController : MonoBehaviour
         Button removeButton = new Button { text = "X" };
         removeButton.clicked += () => 
         {
-            // 'row' is passed so the manager can tell us if it safely deleted the object before clearing the UI asset
-            OnRemoveDronePressed?.Invoke(index, row);
+            _onRemoveDronePressed?.Invoke(index, row);
         };
 
         row.Add(label);

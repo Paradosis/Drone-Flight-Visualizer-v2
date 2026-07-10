@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class JsonManager : MonoBehaviour
+public class DataService : MonoBehaviour
 {
     public TextAsset jsonFile;
     private List<DroneDataEntity> FullDroneEntityList { get; set; } = new List<DroneDataEntity>();
